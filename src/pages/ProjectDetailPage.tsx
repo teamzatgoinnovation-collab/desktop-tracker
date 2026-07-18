@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ZatGoApi } from "@zatgo/erpnext";
+import { TrackerApi, ZatGoApi } from "@zatgo/erpnext";
 import { callZatGoApi } from "@/lib/call-zatgo-api";
 import { asRows, type ProjectRow, type TaskRow } from "@/lib/pt-types";
 
@@ -17,8 +17,8 @@ export function ProjectDetailPage() {
     void (async () => {
       try {
         const [projEnv, tasksEnv] = await Promise.all([
-          callZatGoApi<ProjectRow>(ZatGoApi.projectTracker.projectsGet, { name }),
-          callZatGoApi<TaskRow[]>(ZatGoApi.projectTracker.tasksList, {
+          callZatGoApi<ProjectRow>(TrackerApi.projectsGet, { name }),
+          callZatGoApi<TaskRow[]>(TrackerApi.tasksList, {
             page: 1,
             page_size: 50,
             filters: { project: name },

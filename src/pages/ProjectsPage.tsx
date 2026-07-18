@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ZatGoApi } from "@zatgo/erpnext";
+import { TrackerApi, ZatGoApi } from "@zatgo/erpnext";
 import { callZatGoApi } from "@/lib/call-zatgo-api";
 import { asRows, type ProjectRow } from "@/lib/pt-types";
 
@@ -15,7 +15,7 @@ export function ProjectsPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const env = await callZatGoApi<ProjectRow[]>(ZatGoApi.projectTracker.projectsList, {
+        const env = await callZatGoApi<ProjectRow[]>(TrackerApi.projectsList, {
           page: 1,
           page_size: 50,
         });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ZatGoApi } from "@zatgo/erpnext";
+import { TrackerApi, ZatGoApi } from "@zatgo/erpnext";
 import { Button } from "@zatgo/ui";
 import { toast } from "sonner";
 import { callZatGoApi } from "@/lib/call-zatgo-api";
@@ -13,7 +13,7 @@ export function ApprovalsPage() {
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const env = await callZatGoApi(ZatGoApi.projectTracker.approvalsListMine);
+    const env = await callZatGoApi(TrackerApi.hierarchyMyTree);
     setRows(asApprovalRows(env.data));
     setStatus(`Connected · ${asApprovalRows(env.data).length} pending`);
   }, []);
@@ -35,7 +35,7 @@ export function ApprovalsPage() {
   const onApprove = async (name: string) => {
     setBusy(name);
     try {
-      await callZatGoApi(ZatGoApi.projectTracker.approvalsApprove, { name });
+      await callZatGoApi(TrackerApi.hierarchyAssign, { name });
       toast.success(`Approved ${name}`);
       await load();
     } catch (e) {
@@ -48,7 +48,7 @@ export function ApprovalsPage() {
   const onReject = async (name: string) => {
     setBusy(name);
     try {
-      await callZatGoApi(ZatGoApi.projectTracker.approvalsReject, { name });
+      await callZatGoApi(TrackerApi.hierarchyAssign, { name });
       toast.success(`Rejected ${name}`);
       await load();
     } catch (e) {

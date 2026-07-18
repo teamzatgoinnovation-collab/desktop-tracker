@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ZatGoApi } from "@zatgo/erpnext";
+import { TrackerApi, ZatGoApi } from "@zatgo/erpnext";
 import { Button } from "@zatgo/ui";
 import { toast } from "sonner";
 import { callZatGoApi } from "@/lib/call-zatgo-api";
@@ -15,7 +15,7 @@ export function TaskDetailPage() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const env = await callZatGoApi<TaskRow>(ZatGoApi.projectTracker.tasksGet, { name });
+    const env = await callZatGoApi<TaskRow>(TrackerApi.tasksGet, { name });
     setTask(env.data ?? null);
     setStatus("Connected");
   }, [name]);
@@ -37,7 +37,7 @@ export function TaskDetailPage() {
   const onStatusChange = async (next: string) => {
     setBusy(true);
     try {
-      await callZatGoApi(ZatGoApi.projectTracker.updateTaskStatus, { name, status: next });
+      await callZatGoApi(TrackerApi.updateTaskStatus, { name, status: next });
       toast.success(`Updated ${name} → ${next}`);
       await load();
     } catch (e) {
