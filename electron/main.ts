@@ -19,7 +19,7 @@ function createWindow() {
     height: 800,
     minWidth: 960,
     minHeight: 640,
-    title: "ZatGo Project Tracker",
+    title: "ZatGo Tracker",
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs"),
       contextIsolation: true,

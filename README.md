@@ -1,9 +1,9 @@
-# project-tracker-desktop
+# tracker-desktop
 
 **Status:** Electron client with Phase 9 PT parity (dashboard / lists / detail / approvals)  
 **Kind:** Electron + Vite + React  
-**Backend:** `project_tracker` (+ hub `zatgo_core` ping)  
-**Package:** `@zatgo/project-tracker-desktop`  
+**Backend:** `tracker` (+ hub `zatgo_core` ping)  
+**Package:** `@zatgo/tracker-desktop`  
 **Stack:** [FRONTEND_STACK](../../Docs/Foundation/FRONTEND_STACK.md)
 
 ## Auth
@@ -26,7 +26,7 @@ Kanban / Gantt remain on Frappe Desk.
 
 ```bash
 pnpm install
-pnpm --filter @zatgo/project-tracker-desktop dev
+pnpm --filter @zatgo/tracker-desktop dev
 ```
 
 Vite port: **5177**. Default site URL: `http://127.0.0.1:8082`.

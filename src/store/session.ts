@@ -67,7 +67,7 @@ export const useSessionStore = create<SessionState>()(
       setAllowMockWithoutLogin: (value) => set({ allowMockWithoutLogin: value }),
     }),
     {
-      name: "zatgo-project-tracker-desktop-session",
+      name: "zatgo-tracker-desktop-session",
       partialize: (s) => ({
         connection: { baseUrl: s.connection.baseUrl },
         allowMockWithoutLogin: s.allowMockWithoutLogin,

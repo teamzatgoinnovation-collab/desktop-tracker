@@ -14,7 +14,7 @@ export async function loginWithPassword(input: {
     return {
       ok: false,
       message:
-        "ERPNext login requires the Electron app. Run: pnpm --filter @zatgo/project-tracker-desktop dev",
+        "ERPNext login requires the Electron app. Run: pnpm --filter @zatgo/tracker-desktop dev",
     };
   }
 
