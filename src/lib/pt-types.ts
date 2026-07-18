@@ -21,6 +21,7 @@ export type TaskRow = {
   status?: string;
   project?: string;
   priority?: string;
+  parent_task?: string;
   description?: string;
 };
 

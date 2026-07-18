@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { AppShellLayout, Button, type AppShellNavItem } from "@zatgo/ui";
-import { ClipboardList, LayoutDashboard, Moon, Settings, Shield, Sun } from "@zatgo/icons";
+import { ClipboardList, LayoutDashboard, Moon, Settings, Sun } from "@zatgo/icons";
 import { useThemeStore } from "@/store/theme";
 import { useSessionStore } from "@/store/session";
 import { logoutFromErpnext } from "@/lib/client";
@@ -11,7 +11,7 @@ const nav: AppShellNavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { href: "/projects", label: "Projects", icon: ClipboardList },
   { href: "/tasks", label: "Tasks", icon: ClipboardList },
-  { href: "/approvals", label: "Approvals", icon: Shield },
+  { href: "/tickets", label: "Tickets", icon: ClipboardList },
   { href: "/connection", label: "Connection", icon: Settings },
 ];
 

@@ -3,13 +3,13 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/layouts/AppShell";
 import { hydrateErpnextSession } from "@/lib/client";
 import { ConnectionPage } from "@/pages/ConnectionPage";
-import { ApprovalsPage } from "@/pages/ApprovalsPage";
 import { HomePage } from "@/pages/HomePage";
 import { LoginPage } from "@/pages/LoginPage";
 import { ProjectDetailPage } from "@/pages/ProjectDetailPage";
 import { ProjectsPage } from "@/pages/ProjectsPage";
 import { TaskDetailPage } from "@/pages/TaskDetailPage";
 import { TasksPage } from "@/pages/TasksPage";
+import { TicketsPage } from "@/pages/TicketsPage";
 import { useSessionStore } from "@/store/session";
 
 const Router = window.zatgoDesktop ? HashRouter : BrowserRouter;
@@ -36,7 +36,7 @@ function AppRoutes() {
         <Route path="projects/:name" element={<ProjectDetailPage />} />
         <Route path="tasks" element={<TasksPage />} />
         <Route path="tasks/:name" element={<TaskDetailPage />} />
-        <Route path="approvals" element={<ApprovalsPage />} />
+        <Route path="tickets" element={<TicketsPage />} />
         <Route path="connection" element={<ConnectionPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
