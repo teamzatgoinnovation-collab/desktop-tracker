@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { callZatGoApi } from "@/lib/call-zatgo-api";
 import { asRows, TASK_STATUSES, type TaskRow } from "@/lib/pt-types";
 
+type TreePerson = { user?: string; full_name?: string; is_self?: boolean };
+
 type ActiveSession = {
   name?: string;
   status?: string;
@@ -32,19 +34,24 @@ export function TasksPage() {
   const [active, setActive] = useState<ActiveSession>(null);
   const [newSubject, setNewSubject] = useState("");
   const [assignUser, setAssignUser] = useState("");
+  const [people, setPeople] = useState<TreePerson[]>([]);
   const [elapsed, setElapsed] = useState(0);
 
   const load = useCallback(async () => {
     const params: Record<string, unknown> = { page: 1, page_size: 100, tree: 1 };
     if (scope === "mine") params.mine = 1;
     else params.team = 1;
-    const env = await callZatGoApi<TaskRow[]>(TrackerApi.tasksList, params);
-    const activeEnv = await callZatGoApi<ActiveSession>(TrackerApi.activityActive);
+    const [env, activeEnv, treeEnv] = await Promise.all([
+      callZatGoApi<TaskRow[]>(TrackerApi.tasksList, params),
+      callZatGoApi<ActiveSession>(TrackerApi.activityActive),
+      callZatGoApi<{ people?: TreePerson[] }>(TrackerApi.hierarchyMyTree),
+    ]);
     setRows(asRows(env.data));
     setTotal(typeof env.meta?.total === "number" ? Number(env.meta.total) : asRows(env.data).length);
     const sess = (activeEnv.data as ActiveSession) ?? null;
     setActive(sess);
     setElapsed(sess?.elapsed_seconds || 0);
+    setPeople(Array.isArray(treeEnv.data?.people) ? treeEnv.data.people : []);
     setStatus("Connected");
   }, [scope]);
 
@@ -250,12 +257,18 @@ export function TasksPage() {
         >
           Create
         </button>
-        <input
+        <select
           className="min-w-[12rem] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm"
-          placeholder="Assign user@…"
           value={assignUser}
           onChange={(e) => setAssignUser(e.target.value)}
-        />
+        >
+          <option value="">Assign to…</option>
+          {people.map((p) => (
+            <option key={p.user} value={p.user}>
+              {(p.full_name || p.user) + (p.is_self ? " (you)" : "")}
+            </option>
+          ))}
+        </select>
         <button
           className="rounded-[var(--radius-md)] border border-[var(--color-border)] px-3 py-2 text-sm disabled:opacity-50"
           disabled={!!busy || !selected || !assignUser.trim()}
