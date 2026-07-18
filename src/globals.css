@@ -1,0 +1,7 @@
+@import "tailwindcss";
+@import "@zatgo/ui/globals.css";
+
+/* Sidebar tokens live in @zatgo/config/tailwind/preset.css (--app-sidebar*). */
+
+body { font-family: var(--font-sans); }
+#root { min-height: 100vh; }
