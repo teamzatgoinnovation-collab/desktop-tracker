@@ -74,7 +74,7 @@ export function TasksPage() {
         status: next.status || undefined,
       }).catch(() => undefined);
     },
-    [pathname, router],
+    [location.pathname, navigate],
   );
 
   const load = useCallback(async () => {

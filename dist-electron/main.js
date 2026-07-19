@@ -4,8 +4,40 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
 import { app, ipcMain, BrowserWindow } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+function assertSafeErpnextPath(path2) {
+  const raw = (path2 || "").trim();
+  if (!raw) {
+    throw new Error("path is required");
+  }
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw) || raw.startsWith("//")) {
+    throw new Error("Absolute URLs are not allowed in erpnextRequest path");
+  }
+  const normalized = raw.startsWith("/") ? raw : `/${raw}`;
+  if (normalized.includes("\\") || normalized.split("/").includes("..")) {
+    throw new Error("Path traversal is not allowed in erpnextRequest path");
+  }
+  return normalized;
+}
 function normalizeBaseUrl(url) {
   return url.trim().replace(/\/$/, "");
+}
+function sanitizeClientHeaders(headers) {
+  if (!headers) return void 0;
+  const blocked = /* @__PURE__ */ new Set([
+    "cookie",
+    "authorization",
+    "host",
+    "origin",
+    "referer",
+    "x-frappe-csrf-token",
+    "x-csrftoken"
+  ]);
+  const out = {};
+  for (const [key, value] of Object.entries(headers)) {
+    if (blocked.has(key.toLowerCase())) continue;
+    out[key] = value;
+  }
+  return Object.keys(out).length ? out : void 0;
 }
 function parseSetCookies(headers) {
   const anyHeaders = headers;
@@ -134,12 +166,13 @@ async function erpnextLogout(session) {
   }
 }
 async function erpnextRequest(session, input) {
-  const path2 = input.path.startsWith("/") ? input.path : `/${input.path}`;
+  const path2 = assertSafeErpnextPath(input.path);
+  const safeHeaders = sanitizeClientHeaders(input.headers);
   const { res, cookieHeader } = await siteFetch(session.baseUrl, path2, {
     method: input.method ?? "GET",
     cookieHeader: session.cookieHeader,
     csrfToken: session.csrfToken,
-    headers: input.headers,
+    headers: safeHeaders,
     body: input.body ?? void 0
   });
   const bodyText = await res.text();
@@ -198,7 +231,7 @@ function createWindow() {
     height: 800,
     minWidth: 960,
     minHeight: 640,
-    title: "ZatGo Project Tracker",
+    title: "ZatGo Tracker",
     webPreferences: {
       preload: path.join(__dirname$1, "preload.mjs"),
       contextIsolation: true,

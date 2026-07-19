@@ -3,7 +3,7 @@ import { Loader2 } from "@zatgo/icons";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/PageHeader";
+import { PageHeader } from "@zatgo/ui";
 import { logoutFromErpnext, testConnection } from "@/lib/client";
 import { useSessionStore } from "@/store/session";
 

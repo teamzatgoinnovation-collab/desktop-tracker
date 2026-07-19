@@ -1,3 +1,4 @@
+import { LoadingState } from "@zatgo/ui";
 import { BrowserRouter, HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/layouts/AppShell";
@@ -54,8 +55,8 @@ export function App() {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-[var(--color-muted-foreground)]">
-        Loading…
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <LoadingState label="Starting Tracker…" />
       </div>
     );
   }

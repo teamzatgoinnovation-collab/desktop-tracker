@@ -1,31 +1,50 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { TrackerApi } from "@zatgo/erpnext";
+import {
+  Badge,
+  Button,
+  DataTable,
+  EmptyState,
+  ErrorState,
+  Input,
+  PageHeader,
+} from "@zatgo/ui";
+import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { callZatGoApi } from "@/lib/call-zatgo-api";
 import { asRows, type ProjectRow } from "@/lib/pt-types";
 
 export function ProjectsPage() {
-  const [status, setStatus] = useState("Loading…");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<ProjectRow[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useState("");
 
   const load = useCallback(async () => {
-    const env = await callZatGoApi<ProjectRow[]>(TrackerApi.projectsList, {
-      page: 1,
-      page_size: 50,
-    });
-    setRows(asRows(env.data));
-    setTotal(typeof env.meta?.total === "number" ? Number(env.meta.total) : asRows(env.data).length);
-    setStatus("Connected");
+    setLoading(true);
+    setError(null);
+    try {
+      const env = await callZatGoApi<ProjectRow[]>(TrackerApi.projectsList, {
+        page: 1,
+        page_size: 50,
+      });
+      setRows(asRows(env.data));
+      setTotal(typeof env.meta?.total === "number" ? Number(env.meta.total) : asRows(env.data).length);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "API error");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    void load().catch((e) => setStatus(e instanceof Error ? e.message : "API error"));
+    void load();
   }, [load]);
 
   const createProject = async () => {
@@ -43,66 +62,80 @@ export function ProjectsPage() {
     }
   };
 
+  const columns = useMemo<ColumnDef<ProjectRow, unknown>[]>(
+    () => [
+      {
+        accessorKey: "project_name",
+        header: "Name",
+        cell: ({ row }) =>
+          row.original.name ? (
+            <Link
+              className="font-medium underline-offset-2 hover:underline"
+              to={`/projects/${encodeURIComponent(row.original.name)}`}
+            >
+              {row.original.project_name || row.original.name}
+            </Link>
+          ) : (
+            row.original.project_name
+          ),
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ getValue }) => (
+          <Badge variant="secondary">{(getValue() as string) || "—"}</Badge>
+        ),
+      },
+      {
+        accessorKey: "company",
+        header: "Company",
+        cell: ({ getValue }) => (getValue() as string) || "—",
+      },
+    ],
+    [],
+  );
+
+  if (error) {
+    return <ErrorState title="Could not load projects" description={error} onRetry={() => void load()} />;
+  }
+
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Projects</h1>
-        <p className="text-sm text-[var(--color-muted-foreground)]">
-          {status}
-          {total !== null ? ` · ${total} total` : null}
-        </p>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <input
-          className="min-w-[16rem] flex-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm"
-          placeholder="New project name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <button
-          className="rounded-[var(--radius-md)] bg-[var(--color-primary)] px-3 py-2 text-sm text-white disabled:opacity-50"
-          disabled={busy || !name.trim()}
-          onClick={() => void createProject()}
-        >
-          Create
-        </button>
-      </div>
-      <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border)]">
-        <table className="w-full min-w-[36rem] text-left text-sm">
-          <thead className="border-b border-[var(--color-border)] bg-[var(--color-muted)]/40 text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">
-            <tr>
-              <th className="px-3 py-2 font-medium">Name</th>
-              <th className="px-3 py-2 font-medium">Status</th>
-              <th className="px-3 py-2 font-medium">Company</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td className="px-3 py-4 text-[var(--color-muted-foreground)]" colSpan={3}>
-                  No projects returned.
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row.name} className="border-b border-[var(--color-border)] last:border-0">
-                  <td className="px-3 py-2">
-                    {row.name ? (
-                      <Link className="underline underline-offset-2" to={`/projects/${encodeURIComponent(row.name)}`}>
-                        {row.project_name || row.name}
-                      </Link>
-                    ) : (
-                      row.project_name
-                    )}
-                  </td>
-                  <td className="px-3 py-2">{row.status ?? "—"}</td>
-                  <td className="px-3 py-2">{row.company ?? "—"}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <PageHeader
+        title="Projects"
+        description={total !== null ? `${total} total` : undefined}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Input
+              className="min-w-[14rem]"
+              placeholder="New project name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Button disabled={busy || !name.trim()} onClick={() => void createProject()}>
+              Create
+            </Button>
+          </div>
+        }
+      />
+      <Input
+        className="max-w-xs"
+        placeholder="Filter…"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <DataTable
+        data={rows}
+        columns={columns}
+        globalFilter={filter}
+        loading={loading}
+        empty={
+          <EmptyState
+            title="No projects"
+            description="Create a project to get started."
+          />
+        }
+      />
     </div>
   );
 }

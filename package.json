@@ -13,6 +13,7 @@
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
     "@tanstack/react-query": "^5.62.0",
+    "@tanstack/react-table": "^8.20.0",
     "@zatgo/auth": "workspace:*",
     "@zatgo/erpnext": "workspace:*",
     "@zatgo/icons": "workspace:*",
