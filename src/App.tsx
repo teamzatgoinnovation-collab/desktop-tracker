@@ -10,6 +10,7 @@ import { ProjectsPage } from "@/pages/ProjectsPage";
 import { TaskDetailPage } from "@/pages/TaskDetailPage";
 import { TasksPage } from "@/pages/TasksPage";
 import { TicketsPage } from "@/pages/TicketsPage";
+import { ReportsPage } from "@/pages/ReportsPage";
 import { useSessionStore } from "@/store/session";
 
 const Router = window.zatgoDesktop ? HashRouter : BrowserRouter;
@@ -37,6 +38,7 @@ function AppRoutes() {
         <Route path="tasks" element={<TasksPage />} />
         <Route path="tasks/:name" element={<TaskDetailPage />} />
         <Route path="tickets" element={<TicketsPage />} />
+        <Route path="reports" element={<ReportsPage />} />
         <Route path="connection" element={<ConnectionPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

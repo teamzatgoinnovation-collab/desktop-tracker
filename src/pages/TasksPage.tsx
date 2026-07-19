@@ -1,13 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { TrackerApi } from "@zatgo/erpnext";
 import { toast } from "sonner";
 import { callZatGoApi } from "@/lib/call-zatgo-api";
-import { asRows, TASK_STATUSES, type TaskRow } from "@/lib/pt-types";
+
+const TASK_STATUSES = ["Open", "Working", "Pending Review", "Completed", "Cancelled"] as const;
+
+type TaskRow = {
+  name?: string;
+  subject?: string;
+  status?: string;
+  project?: string;
+  priority?: string;
+  parent_task?: string;
+  _assign?: string;
+};
 
 type TreePerson = { user?: string; full_name?: string; is_self?: boolean };
+type Preset = { id?: string; name?: string; scope?: string; project?: string; status?: string };
 
 type ActiveSession = {
   name?: string;
@@ -15,6 +27,10 @@ type ActiveSession = {
   task?: string;
   elapsed_seconds?: number;
 } | null;
+
+function asRows(data: unknown): TaskRow[] {
+  return Array.isArray(data) ? (data as TaskRow[]) : [];
+}
 
 function formatElapsed(sec?: number) {
   const s = Math.max(0, Math.floor(sec || 0));
@@ -25,8 +41,16 @@ function formatElapsed(sec?: number) {
 }
 
 export function TasksPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [status, setStatus] = useState("Loading…");
-  const [scope, setScope] = useState<"mine" | "team">("mine");
+  const [scope, setScope] = useState<"mine" | "team" | "both">(
+    (searchParams.get("scope") as "mine" | "team" | "both") || "mine",
+  );
+  const [projectFilter, setProjectFilter] = useState(searchParams.get("project") || "");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "");
+  const [presets, setPresets] = useState<Preset[]>([]);
   const [rows, setRows] = useState<TaskRow[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -37,14 +61,33 @@ export function TasksPage() {
   const [people, setPeople] = useState<TreePerson[]>([]);
   const [elapsed, setElapsed] = useState(0);
 
+  const syncQuery = useCallback(
+    (next: { scope: string; project?: string; status?: string }) => {
+      const q = new URLSearchParams();
+      q.set("scope", next.scope);
+      if (next.project) q.set("project", next.project);
+      if (next.status) q.set("status", next.status);
+      navigate(`${location.pathname}?${q.toString()}`, { replace: true });
+      void callZatGoApi(TrackerApi.filtersSetLast, {
+        scope: next.scope,
+        project: next.project || undefined,
+        status: next.status || undefined,
+      }).catch(() => undefined);
+    },
+    [pathname, router],
+  );
+
   const load = useCallback(async () => {
     const params: Record<string, unknown> = { page: 1, page_size: 100, tree: 1 };
-    if (scope === "mine") params.mine = 1;
-    else params.team = 1;
-    const [env, activeEnv, treeEnv] = await Promise.all([
+    if (scope === "mine" || scope === "both") params.mine = 1;
+    if (scope === "team" || scope === "both") params.team = 1;
+    if (projectFilter.trim()) params.project = projectFilter.trim();
+    if (statusFilter.trim()) params.status = statusFilter.trim();
+    const [env, activeEnv, treeEnv, presetsEnv] = await Promise.all([
       callZatGoApi<TaskRow[]>(TrackerApi.tasksList, params),
       callZatGoApi<ActiveSession>(TrackerApi.activityActive),
       callZatGoApi<{ people?: TreePerson[] }>(TrackerApi.hierarchyMyTree),
+      callZatGoApi<{ last?: Preset; presets?: Preset[] }>(TrackerApi.filtersGetPresets),
     ]);
     setRows(asRows(env.data));
     setTotal(typeof env.meta?.total === "number" ? Number(env.meta.total) : asRows(env.data).length);
@@ -52,13 +95,32 @@ export function TasksPage() {
     setActive(sess);
     setElapsed(sess?.elapsed_seconds || 0);
     setPeople(Array.isArray(treeEnv.data?.people) ? treeEnv.data.people : []);
+    setPresets(Array.isArray(presetsEnv.data?.presets) ? presetsEnv.data.presets : []);
     setStatus("Connected");
-  }, [scope]);
+  }, [scope, projectFilter, statusFilter]);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
+        if (!searchParams.get("scope")) {
+          try {
+            const presetsEnv = await callZatGoApi<{ last?: Preset }>(TrackerApi.filtersGetPresets);
+            const last = presetsEnv.data?.last;
+            if (last?.scope && !cancelled) {
+              setScope((last.scope as "mine" | "team" | "both") || "mine");
+              setProjectFilter(last.project || "");
+              setStatusFilter(last.status || "");
+              syncQuery({
+                scope: last.scope,
+                project: last.project || undefined,
+                status: last.status || undefined,
+              });
+            }
+          } catch {
+            /* ignore */
+          }
+        }
         await load();
       } catch (e) {
         if (!cancelled) setStatus(e instanceof Error ? e.message : "API error");
@@ -67,7 +129,7 @@ export function TasksPage() {
     return () => {
       cancelled = true;
     };
-  }, [load]);
+  }, [load, searchParams, syncQuery]);
 
   useEffect(() => {
     if (active?.status !== "Running") return;
@@ -79,7 +141,7 @@ export function TasksPage() {
     const byParent = new Map<string, TaskRow[]>();
     const roots: TaskRow[] = [];
     for (const row of rows) {
-      const p = (row as TaskRow & { parent_task?: string }).parent_task || "";
+      const p = row.parent_task || "";
       if (!p) roots.push(row);
       else {
         const list = byParent.get(p) || [];
@@ -101,6 +163,11 @@ export function TasksPage() {
     }
     return out;
   }, [rows]);
+
+  const applyScope = (next: "mine" | "team" | "both") => {
+    setScope(next);
+    syncQuery({ scope: next, project: projectFilter || undefined, status: statusFilter || undefined });
+  };
 
   const onStatusChange = async (name: string, next: string) => {
     setBusy(name);
@@ -152,6 +219,23 @@ export function TasksPage() {
     }
   };
 
+  const savePreset = async () => {
+    const name = window.prompt("Filter name");
+    if (!name?.trim()) return;
+    try {
+      const env = await callZatGoApi<{ presets?: Preset[] }>(TrackerApi.filtersSavePreset, {
+        name: name.trim(),
+        scope,
+        project: projectFilter || undefined,
+        status: statusFilter || undefined,
+      });
+      setPresets(Array.isArray(env.data?.presets) ? env.data.presets : []);
+      toast.success("Filter saved");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    }
+  };
+
   const runActivity = async (kind: "start" | "pause" | "next" | "stop") => {
     setBusy(kind);
     try {
@@ -186,20 +270,76 @@ export function TasksPage() {
             {total !== null ? ` · ${total} total` : null}
           </p>
         </div>
-        <div className="flex gap-2 text-sm">
-          <button
-            className={`rounded-[var(--radius-md)] px-3 py-1.5 ${scope === "mine" ? "bg-[var(--color-primary)] text-white" : "border border-[var(--color-border)]"}`}
-            onClick={() => setScope("mine")}
-          >
-            My Work
-          </button>
-          <button
-            className={`rounded-[var(--radius-md)] px-3 py-1.5 ${scope === "team" ? "bg-[var(--color-primary)] text-white" : "border border-[var(--color-border)]"}`}
-            onClick={() => setScope("team")}
-          >
-            Team
-          </button>
+        <div className="flex flex-wrap gap-2 text-sm">
+          {(["mine", "team", "both"] as const).map((s) => (
+            <button
+              key={s}
+              className={`rounded-[var(--radius-md)] px-3 py-1.5 ${scope === s ? "bg-[var(--color-primary)] text-white" : "border border-[var(--color-border)]"}`}
+              onClick={() => applyScope(s)}
+            >
+              {s === "mine" ? "My Work" : s === "team" ? "Team" : "Mine + Team"}
+            </button>
+          ))}
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <input
+          className="w-40 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm"
+          placeholder="Project"
+          value={projectFilter}
+          onChange={(e) => setProjectFilter(e.target.value)}
+          onBlur={() =>
+            syncQuery({
+              scope,
+              project: projectFilter || undefined,
+              status: statusFilter || undefined,
+            })
+          }
+        />
+        <input
+          className="w-32 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm"
+          placeholder="Status"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          onBlur={() =>
+            syncQuery({
+              scope,
+              project: projectFilter || undefined,
+              status: statusFilter || undefined,
+            })
+          }
+        />
+        <select
+          className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-transparent px-3 py-2 text-sm"
+          defaultValue=""
+          onChange={(e) => {
+            const p = presets.find((x) => x.id === e.target.value || x.name === e.target.value);
+            if (!p) return;
+            const nextScope = (p.scope as "mine" | "team" | "both") || "mine";
+            setScope(nextScope);
+            setProjectFilter(p.project || "");
+            setStatusFilter(p.status || "");
+            syncQuery({
+              scope: nextScope,
+              project: p.project || undefined,
+              status: p.status || undefined,
+            });
+          }}
+        >
+          <option value="">Presets…</option>
+          {presets.map((p) => (
+            <option key={p.id || p.name} value={p.id || p.name}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        <button
+          className="rounded-[var(--radius-md)] border border-[var(--color-border)] px-3 py-2 text-sm"
+          onClick={() => void savePreset()}
+        >
+          Save filter
+        </button>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] p-3">
@@ -305,13 +445,7 @@ export function TasksPage() {
                   onClick={() => setSelected(row.name ?? null)}
                 >
                   <td className="px-3 py-2" style={{ paddingLeft: `${12 + depth * 16}px` }}>
-                    {row.name ? (
-                      <Link className="underline underline-offset-2" to={`/tasks/${encodeURIComponent(row.name)}`}>
-                        {row.subject || row.name}
-                      </Link>
-                    ) : (
-                      row.subject
-                    )}
+                    {row.subject || row.name}
                   </td>
                   <td className="px-3 py-2">{row.project ?? "—"}</td>
                   <td className="px-3 py-2">{row.priority ?? "—"}</td>
