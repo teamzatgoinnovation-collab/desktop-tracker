@@ -29,4 +29,4 @@ pnpm install
 pnpm --filter @zatgo/tracker-desktop dev
 ```
 
-Vite port: **5177**. Default site URL: `https://erp.zatgo.online`.
+Vite port: **5177**. Default site URL: `https://demo.zatgo.online`.
